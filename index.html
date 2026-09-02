@@ -319,7 +319,8 @@
     <div class="sidebar-section-label">Your groups</div>
     <ul class="group-list" id="groupList"></ul>
     <button class="new-group-btn" id="newGroupBtn">+ New group</button>
-    <div class="sidebar-foot">Data stored privately on this device.</div>
+    <button class="new-group-btn" id="syncBtn" style="margin-top:6px;">&#8635; Sync devices</button>
+    <div class="sidebar-foot" id="syncStatus">Data stored privately on this device.</div>
   </aside>
 
   <main id="main"></main>
@@ -403,6 +404,7 @@ async function saveIndex(){
   try{
     lsSet(STORAGE_KEY_INDEX, JSON.stringify(state.groups));
   }catch(e){ console.error('index save failed', e); }
+  pushToCloud();
 }
 async function loadGroup(id){
   if(state.cache[id]) return state.cache[id];
@@ -420,6 +422,93 @@ async function saveGroup(g){
   try{
     lsSet(groupKey(g.id), JSON.stringify(g));
   }catch(e){ console.error('group save failed', e); }
+  pushToCloud();
+}
+
+/* ---------------- cloud sync ----------------
+   Sync is opt-in: the person sets a short "sync code" once per device.
+   Any device using the same code reads and writes the same data via a
+   Netlify Function backed by Netlify Blobs (a real server-side store,
+   not the browser's local storage). No code set = local-only, exactly
+   like before.
+--------------------------------------------------------------------- */
+const SYNC_CODE_KEY = 'ajopay:sync-code';
+
+function getSyncCode(){
+  try{ return localStorage.getItem(SYNC_CODE_KEY) || ''; }catch(e){ return ''; }
+}
+function setSyncCodeLocal(code){
+  try{ localStorage.setItem(SYNC_CODE_KEY, code); }catch(e){}
+}
+function clearSyncCodeLocal(){
+  try{ localStorage.removeItem(SYNC_CODE_KEY); }catch(e){}
+}
+function genSyncCode(){
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no ambiguous 0/O/1/I
+  let out = '';
+  for(let i=0;i<6;i++){ out += chars[Math.floor(Math.random()*chars.length)]; }
+  return out;
+}
+
+async function buildSnapshot(){
+  // make sure every group's full data is loaded before snapshotting
+  for(const entry of state.groups){
+    await loadGroup(entry.id);
+  }
+  return { groups: state.groups, groupData: state.cache };
+}
+
+let pushInFlight = null;
+async function pushToCloud(){
+  const code = getSyncCode();
+  if(!code) return;
+  // coalesce rapid successive calls into one in-flight push
+  if(pushInFlight) return pushInFlight;
+  pushInFlight = (async()=>{
+    try{
+      const snapshot = await buildSnapshot();
+      await fetch(`/.netlify/functions/sync-data?code=${encodeURIComponent(code)}`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(snapshot)
+      });
+    }catch(e){
+      console.error('cloud push failed', e);
+    }finally{
+      pushInFlight = null;
+    }
+  })();
+  return pushInFlight;
+}
+
+async function pullFromCloud(code){
+  try{
+    const res = await fetch(`/.netlify/functions/sync-data?code=${encodeURIComponent(code)}`);
+    if(!res.ok) return false;
+    const json = await res.json();
+    if(json && json.data && json.data.groups){
+      state.groups = json.data.groups || [];
+      state.cache = json.data.groupData || {};
+      lsSet(STORAGE_KEY_INDEX, JSON.stringify(state.groups));
+      Object.entries(state.cache).forEach(([id, g])=>{
+        if(g) lsSet(groupKey(id), JSON.stringify(g));
+      });
+      return true;
+    }
+    return false;
+  }catch(e){
+    console.error('cloud pull failed', e);
+    return false;
+  }
+}
+
+function renderSyncStatus(){
+  const el = document.getElementById('syncStatus');
+  if(!el) return;
+  const code = getSyncCode();
+  el.textContent = code
+    ? `Synced across devices — code ${code}`
+    : 'Data stored privately on this device.';
 }
 
 /* ---------------- derived helpers ---------------- */
@@ -1041,11 +1130,101 @@ function openAddMemberModal(g){
   });
 }
 
+function openSyncModal(){
+  const root = document.getElementById('modalRoot');
+  const code = getSyncCode();
+
+  if(!code){
+    root.innerHTML = `
+      <div class="overlay">
+        <div class="modal">
+          <h3>Sync across devices</h3>
+          <p style="color:var(--ink-soft); font-size:13px; margin-bottom:16px;">
+            By default your groups only live on this device. Turn on sync to see the
+            same groups whether you're on your phone or a laptop.
+          </p>
+          <div class="field">
+            <label>Start fresh with a new code</label>
+            <button class="btn primary" id="syncGenBtn" style="width:100%;">Generate a sync code</button>
+          </div>
+          <div class="field">
+            <label>Or link to a code from another device</label>
+            <input id="syncEnterCode" type="text" placeholder="e.g. 7K2QRT" style="text-transform:uppercase;">
+          </div>
+          <div class="modal-actions">
+            <button class="btn" id="syncCancel">Cancel</button>
+            <button class="btn primary" id="syncLinkBtn">Use this code</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.getElementById('syncCancel').addEventListener('click', closeModal);
+    document.getElementById('syncGenBtn').addEventListener('click', async ()=>{
+      const newCode = genSyncCode();
+      setSyncCodeLocal(newCode);
+      showToast('Sync turned on. Pushing your groups to the cloud…');
+      await pushToCloud();
+      closeModal();
+      renderSyncStatus();
+      openSyncModal(); // reopen showing the new code + copy option
+    });
+    document.getElementById('syncLinkBtn').addEventListener('click', async ()=>{
+      const entered = document.getElementById('syncEnterCode').value.trim().toUpperCase();
+      if(!entered || entered.length < 4){ showToast('Enter the code shown on your other device.'); return; }
+      setSyncCodeLocal(entered);
+      showToast('Pulling groups from the cloud…');
+      const ok = await pullFromCloud(entered);
+      closeModal();
+      renderSyncStatus();
+      if(ok){
+        state.activeId = state.groups.length ? state.groups[0].id : null;
+        showToast('Synced!');
+      } else {
+        showToast('No data found yet for that code — this device will push to it once you make a change.');
+      }
+      await renderAll();
+    });
+    return;
+  }
+
+  // sync already on — show the code + management options
+  root.innerHTML = `
+    <div class="overlay">
+      <div class="modal">
+        <h3>Sync is on</h3>
+        <p style="color:var(--ink-soft); font-size:13px; margin-bottom:10px;">
+          Enter this code on another device to see the same groups there.
+        </p>
+        <div style="background:var(--indigo-100); border-radius:var(--radius); padding:16px; text-align:center; margin-bottom:16px;">
+          <div class="mono" style="font-size:28px; font-weight:600; letter-spacing:3px; color:var(--indigo-900);">${escapeHtml(code)}</div>
+        </div>
+        <div class="modal-actions" style="justify-content:space-between;">
+          <button class="btn danger" id="syncOffBtn">Turn off sync</button>
+          <button class="btn primary" id="syncCloseBtn">Done</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('syncCloseBtn').addEventListener('click', closeModal);
+  document.getElementById('syncOffBtn').addEventListener('click', ()=>{
+    clearSyncCodeLocal();
+    closeModal();
+    renderSyncStatus();
+    showToast('Sync turned off. This device now keeps its own local copy.');
+  });
+}
+
 /* ---------------- init ---------------- */
 document.getElementById('newGroupBtn').addEventListener('click', openNewGroupModal);
+document.getElementById('syncBtn').addEventListener('click', openSyncModal);
 
 async function init(){
   await loadIndex();
+  const code = getSyncCode();
+  if(code){
+    await pullFromCloud(code);
+  }
+  renderSyncStatus();
   if(state.groups.length){
     state.activeId = state.groups[0].id;
   }
@@ -1055,3 +1234,4 @@ init();
 </script>
 </body>
 </html>
+
