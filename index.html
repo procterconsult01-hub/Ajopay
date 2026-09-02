@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ajopay — Cooperative Savings Manager</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;0,600;1,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://js.paystack.co/v1/inline.js"></script>
+<style>
+  :root{
+    --indigo-900:#1E2A4A;
+    --indigo-700:#2F4270;
+    --indigo-100:#E7EAF2;
+    --gold-500:#C9962B;
+    --gold-100:#F3E4C0;
+    --paper:#F6F4EF;
+    --panel:#FFFFFF;
+    --ink:#1B1B18;
+    --ink-soft:#5A584F;
+    --line:#DEDACC;
+    --red-500:#A5382C;
+    --red-100:#F3E1DD;
+    --green-600:#3F6B4A;
+    --green-100:#E1EBE3;
+    --radius:3px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:14px;
+    line-height:1.5;
+    min-height:100vh;
+  }
+  h1,h2,h3{
+    font-family:'Newsreader', serif;
+    font-weight:600;
+    margin:0;
+    color:var(--indigo-900);
+  }
+  .mono{font-family:'IBM Plex Mono', monospace;}
+  button{font-family:inherit; cursor:pointer;}
+  input,select{font-family:inherit;}
+
+  /* App shell */
+  #app{display:flex; min-height:100vh;}
+
+  /* Sidebar */
+  .sidebar{
+    width:250px;
+    flex-shrink:0;
+    background:var(--indigo-900);
+    color:#EDEAE0;
+    display:flex;
+    flex-direction:column;
+    padding:20px 16px;
+  }
+  .brand{
+    display:flex;
+    align-items:baseline;
+    gap:6px;
+    margin-bottom:24px;
+    padding:0 4px;
+  }
+  .brand-mark{
+    width:9px; height:9px;
+    background:var(--gold-500);
+    border-radius:50%;
+    display:inline-block;
+    margin-right:2px;
+  }
+  .brand h1{color:#F6F4EF; font-size:19px; letter-spacing:0.2px;}
+  .brand span{font-size:11px; color:#B9BFD1; font-family:'IBM Plex Sans';}
+
+  .sidebar-section-label{
+    font-size:11px;
+    color:#9AA2BB;
+    margin:18px 4px 8px;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+  }
+  .group-list{list-style:none; margin:0; padding:0; flex:1; overflow-y:auto;}
+  .group-item{
+    padding:9px 10px;
+    border-radius:var(--radius);
+    margin-bottom:3px;
+    cursor:pointer;
+    font-size:13.5px;
+    color:#D9DCE8;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    border-left:2px solid transparent;
+  }
+  .group-item:hover{background:rgba(255,255,255,0.06);}
+  .group-item.active{
+    background:rgba(255,255,255,0.09);
+    border-left:2px solid var(--gold-500);
+    color:#fff;
+  }
+  .group-item .g-name{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .group-item .g-count{font-size:11px; color:#9AA2BB; font-family:'IBM Plex Mono';}
+
+  .new-group-btn{
+    margin-top:10px;
+    width:100%;
+    padding:9px 10px;
+    background:transparent;
+    border:1px solid #445078;
+    color:#D9DCE8;
+    border-radius:var(--radius);
+    font-size:13px;
+    text-align:left;
+  }
+  .new-group-btn:hover{border-color:var(--gold-500); color:#fff;}
+
+  .sidebar-foot{
+    font-size:11px;
+    color:#7B8299;
+    padding:12px 4px 0;
+    border-top:1px solid #35406A;
+    margin-top:14px;
+  }
+
+  /* Main */
+  main{flex:1; padding:32px 40px; max-width:1080px;}
+  .empty-state{
+    max-width:420px;
+    margin-top:80px;
+  }
+  .empty-state h2{font-size:22px; margin-bottom:8px;}
+  .empty-state p{color:var(--ink-soft); margin-bottom:18px;}
+
+  .topline{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    margin-bottom:26px;
+    gap:20px;
+  }
+  .topline h2{font-size:24px; margin-bottom:4px;}
+  .topline .meta{color:var(--ink-soft); font-size:13px;}
+  .topline .meta .mono{color:var(--ink-soft);}
+
+  .tabs{
+    display:flex;
+    gap:2px;
+    border-bottom:1px solid var(--line);
+    margin-bottom:24px;
+  }
+  .tab{
+    padding:9px 4px;
+    margin-right:22px;
+    font-size:13.5px;
+    color:var(--ink-soft);
+    border-bottom:2px solid transparent;
+    cursor:pointer;
+  }
+  .tab.active{color:var(--indigo-900); border-bottom-color:var(--gold-500); font-weight:500;}
+
+  /* Cards */
+  .cards{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:14px;
+    margin-bottom:28px;
+  }
+  .card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:16px;
+  }
+  .card .label{font-size:11.5px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:8px;}
+  .card .value{font-family:'IBM Plex Mono'; font-size:22px; font-weight:600; color:var(--indigo-900);}
+  .card .sub{font-size:12px; color:var(--ink-soft); margin-top:4px;}
+  .card.flag .value{color:var(--red-500);}
+  .card.good .value{color:var(--green-600);}
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    margin-bottom:20px;
+  }
+  .panel-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:14px 18px;
+    border-bottom:1px solid var(--line);
+  }
+  .panel-head h3{font-size:15px;}
+  .panel-body{padding:6px 18px 16px;}
+
+  table{width:100%; border-collapse:collapse; font-size:13.5px;}
+  th{
+    text-align:left;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.04em;
+    color:var(--ink-soft);
+    font-weight:500;
+    padding:10px 8px;
+    border-bottom:1px solid var(--line);
+  }
+  td{padding:10px 8px; border-bottom:1px solid #EEEBE0; vertical-align:middle;}
+  tr:last-child td{border-bottom:none;}
+  .num{font-family:'IBM Plex Mono';}
+
+  .pill{
+    display:inline-block;
+    padding:2px 9px;
+    border-radius:20px;
+    font-size:11.5px;
+    font-weight:500;
+  }
+  .pill.paid{background:var(--green-100); color:var(--green-600);}
+  .pill.pending{background:var(--gold-100); color:#8A6A1B;}
+  .pill.default{background:var(--red-100); color:var(--red-500);}
+  .pill.next{background:var(--indigo-100); color:var(--indigo-700);}
+
+  .btn{
+    padding:7px 14px;
+    border-radius:var(--radius);
+    border:1px solid var(--line);
+    background:var(--panel);
+    font-size:13px;
+    color:var(--ink);
+  }
+  .btn:hover{border-color:var(--indigo-700);}
+  .btn.primary{background:var(--indigo-900); color:#fff; border-color:var(--indigo-900);}
+  .btn.primary:hover{background:var(--indigo-700);}
+  .btn.small{padding:4px 9px; font-size:12px;}
+  .btn.danger{color:var(--red-500); border-color:var(--red-100);}
+  .btn.gold{background:var(--gold-500); border-color:var(--gold-500); color:#2B2107;}
+  .btn.gold:hover{background:#B8871F;}
+  .btn:disabled{opacity:0.45; cursor:not-allowed;}
+  .btn-row{display:flex; gap:8px; align-items:center;}
+
+  .icon-btn{
+    background:none; border:none; color:var(--ink-soft); font-size:13px; padding:3px 6px;
+  }
+  .icon-btn:hover{color:var(--indigo-900);}
+
+  /* Forms / modal */
+  .overlay{
+    position:fixed; inset:0; background:rgba(20,20,15,0.45);
+    display:flex; align-items:center; justify-content:center; z-index:50;
+  }
+  .modal{
+    background:var(--panel);
+    width:420px;
+    max-width:92vw;
+    border-radius:var(--radius);
+    padding:24px;
+    max-height:86vh;
+    overflow-y:auto;
+  }
+  .modal h3{font-size:17px; margin-bottom:16px;}
+  .field{margin-bottom:14px;}
+  .field label{display:block; font-size:12px; color:var(--ink-soft); margin-bottom:5px;}
+  .field input, .field select{
+    width:100%;
+    padding:8px 10px;
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    font-size:13.5px;
+    background:#FCFBF8;
+  }
+  .field input:focus, .field select:focus{outline:none; border-color:var(--indigo-700);}
+  .field-row{display:flex; gap:10px;}
+  .field-row .field{flex:1;}
+  .modal-actions{display:flex; justify-content:flex-end; gap:8px; margin-top:18px;}
+
+  .empty-mini{color:var(--ink-soft); font-size:13px; padding:20px 0; text-align:center;}
+
+  .toast{
+    position:fixed; bottom:22px; right:22px;
+    background:var(--indigo-900); color:#fff;
+    padding:10px 16px; border-radius:var(--radius);
+    font-size:13px; z-index:60;
+    box-shadow:0 4px 14px rgba(0,0,0,0.18);
+  }
+
+  .reminder-box{
+    background:#FCFBF8;
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:12px;
+    font-size:12.5px;
+    color:var(--ink-soft);
+    white-space:pre-wrap;
+    margin-top:10px;
+    font-family:'IBM Plex Mono';
+  }
+
+  @media (max-width:760px){
+    #app{flex-direction:column;}
+    .sidebar{width:100%; flex-direction:row; overflow-x:auto; align-items:center;}
+    .brand{margin-bottom:0;}
+    main{padding:20px;}
+    .cards{grid-template-columns:1fr 1fr;}
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-mark"></span>
+      <h1>Ajopay</h1>
+      <span>cooperative savings</span>
+    </div>
+    <div class="sidebar-section-label">Your groups</div>
+    <ul class="group-list" id="groupList"></ul>
+    <button class="new-group-btn" id="newGroupBtn">+ New group</button>
+    <div class="sidebar-foot">Data stored privately on this device.</div>
+  </aside>
+
+  <main id="main"></main>
+</div>
+
+<div id="modalRoot"></div>
+<div id="toastRoot"></div>
+
+<script>
+/* ---------------------------------------------------------
+   AJOPAY PROTOTYPE
+   Rotating cooperative savings (ajo/esusu) manager.
+   Data model per group:
+   {
+     id, name, currency, amount, frequency, createdAt,
+     members: [{id, name, phone}],
+     order: [memberId,...]        // payout rotation order
+     currentCycle: 0,
+     contributions: { [cycleIndex]: { [memberId]: {paid:bool, date} } },
+     payouts: { [cycleIndex]: {memberId, date} }
+   }
+--------------------------------------------------------- */
+
+const STORAGE_KEY_INDEX = 'ajopay:groups-index';
+const groupKey = id => `ajopay:group:${id}`;
+
+let state = {
+  groups: [],       // [{id,name}] index
+  activeId: null,
+  cache: {},        // id -> full group object
+  activeTab: 'overview'
+};
+
+function uid(prefix){ return prefix + '_' + Math.random().toString(36).slice(2,9); }
+function fmtMoney(n, currency){ return currency + Number(n||0).toLocaleString('en-NG'); }
+function showToast(msg){
+  const root = document.getElementById('toastRoot');
+  root.innerHTML = `<div class="toast">${msg}</div>`;
+  setTimeout(()=>{ root.innerHTML=''; }, 2400);
+}
+
+/* ---------------- storage ---------------- */
+async function loadIndex(){
+  try{
+    const res = await window.storage.get(STORAGE_KEY_INDEX);
+    state.groups = res ? JSON.parse(res.value) : [];
+  }catch(e){
+    state.groups = [];
+  }
+}
+async function saveIndex(){
+  try{
+    await window.storage.set(STORAGE_KEY_INDEX, JSON.stringify(state.groups));
+  }catch(e){ console.error('index save failed', e); }
+}
+async function loadGroup(id){
+  if(state.cache[id]) return state.cache[id];
+  try{
+    const res = await window.storage.get(groupKey(id));
+    const g = res ? JSON.parse(res.value) : null;
+    state.cache[id] = g;
+    return g;
+  }catch(e){
+    return null;
+  }
+}
+async function saveGroup(g){
+  state.cache[g.id] = g;
+  try{
+    await window.storage.set(groupKey(g.id), JSON.stringify(g));
+  }catch(e){ console.error('group save failed', e); }
+}
+
+/* ---------------- derived helpers ---------------- */
+function cycleContribs(g, cycle){
+  return (g.contributions && g.contributions[cycle]) || {};
+}
+function isPaid(g, cycle, memberId){
+  const c = cycleContribs(g, cycle)[memberId];
+  return !!(c && c.paid);
+}
+function poolForCycle(g){
+  return g.amount * g.members.length;
+}
+function collectedForCycle(g, cycle){
+  const c = cycleContribs(g, cycle);
+  return Object.values(c).filter(x=>x.paid).length * g.amount;
+}
+function defaultersForCycle(g, cycle){
+  return g.members.filter(m => !isPaid(g, g.currentCycle, m.id));
+}
+function nextRecipient(g){
+  const idx = g.currentCycle % g.order.length;
+  const id = g.order[idx];
+  return g.members.find(m=>m.id===id);
+}
+function memberById(g, id){ return g.members.find(m=>m.id===id); }
+
+/* ---------------- rendering: sidebar ---------------- */
+function renderSidebar(){
+  const list = document.getElementById('groupList');
+  if(state.groups.length===0){
+    list.innerHTML = `<li class="empty-mini" style="color:#9AA2BB; padding:10px 4px;">No groups yet</li>`;
+    return;
+  }
+  list.innerHTML = state.groups.map(g=>`
+    <li class="group-item ${g.id===state.activeId?'active':''}" data-id="${g.id}">
+      <span class="g-name">${escapeHtml(g.name)}</span>
+      <span class="g-count">${g.memberCount||0}</span>
+    </li>
+  `).join('');
+  list.querySelectorAll('.group-item').forEach(el=>{
+    el.addEventListener('click', ()=> selectGroup(el.dataset.id));
+  });
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* ---------------- main render ---------------- */
+async function selectGroup(id){
+  state.activeId = id;
+  state.activeTab = 'overview';
+  await renderAll();
+}
+
+async function renderAll(){
+  renderSidebar();
+  const main = document.getElementById('main');
+  if(!state.activeId){
+    main.innerHTML = `
+      <div class="empty-state">
+        <h2>Set up your first group</h2>
+        <p>Create a cooperative savings group to track members, contribution cycles, and the payout rotation — no more chasing balances in a notebook or WhatsApp thread.</p>
+        <button class="btn primary" id="emptyNewBtn">+ New group</button>
+      </div>`;
+    document.getElementById('emptyNewBtn').addEventListener('click', openNewGroupModal);
+    return;
+  }
+  const g = await loadGroup(state.activeId);
+  if(!g){ main.innerHTML = `<div class="empty-state"><p>Group not found.</p></div>`; return; }
+
+  const pool = poolForCycle(g);
+  const collected = collectedForCycle(g, g.currentCycle);
+  const defaulters = defaultersForCycle(g, g.currentCycle);
+  const recipient = nextRecipient(g);
+  const cycleLabel = g.currentCycle + 1;
+
+  main.innerHTML = `
+    <div class="topline">
+      <div>
+        <h2>${escapeHtml(g.name)}</h2>
+        <div class="meta">${g.members.length} members · <span class="mono">${fmtMoney(g.amount, g.currency)}</span> per member / ${g.frequency} · Cycle ${cycleLabel} of ${g.members.length || 0}</div>
+      </div>
+      <div class="btn-row">
+        <button class="btn" id="editGroupBtn">Edit group</button>
+        <button class="btn danger" id="deleteGroupBtn">Delete</button>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <div class="tab ${state.activeTab==='overview'?'active':''}" data-tab="overview">Overview</div>
+      <div class="tab ${state.activeTab==='members'?'active':''}" data-tab="members">Members</div>
+      <div class="tab ${state.activeTab==='rotation'?'active':''}" data-tab="rotation">Rotation &amp; payouts</div>
+      <div class="tab ${state.activeTab==='reminders'?'active':''}" data-tab="reminders">Reminders</div>
+    </div>
+
+    <div id="tabContent"></div>
+  `;
+
+  main.querySelectorAll('.tab').forEach(el=>{
+    el.addEventListener('click', ()=>{ state.activeTab = el.dataset.tab; renderAll(); });
+  });
+  document.getElementById('editGroupBtn').addEventListener('click', ()=>openEditGroupModal(g));
+  document.getElementById('deleteGroupBtn').addEventListener('click', ()=>confirmDeleteGroup(g));
+
+  const tabContent = document.getElementById('tabContent');
+
+  if(state.activeTab==='overview'){
+    tabContent.innerHTML = `
+      <div class="cards">
+        <div class="card">
+          <div class="label">This cycle's pool</div>
+          <div class="value">${fmtMoney(pool, g.currency)}</div>
+          <div class="sub">${g.members.length} × ${fmtMoney(g.amount, g.currency)}</div>
+        </div>
+        <div class="card good">
+          <div class="label">Collected so far</div>
+          <div class="value">${fmtMoney(collected, g.currency)}</div>
+          <div class="sub">${pool>0 ? Math.round((collected/pool)*100) : 0}% of cycle pool</div>
+        </div>
+        <div class="card">
+          <div class="label">Next payout</div>
+          <div class="value" style="font-size:16px; font-family:'IBM Plex Sans'; font-weight:600;">${recipient ? escapeHtml(recipient.name) : '—'}</div>
+          <div class="sub">Cycle ${cycleLabel}</div>
+        </div>
+        <div class="card ${defaulters.length? 'flag':''}">
+          <div class="label">Outstanding</div>
+          <div class="value">${defaulters.length}</div>
+          <div class="sub">of ${g.members.length} members</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Cycle ${cycleLabel} contributions</h3>
+          <div class="btn-row">
+            <button class="btn small ${allPaidThisCycle(g) ? 'gold':''}" id="advanceCycleBtn" ${g.members.length===0?'disabled':''}>
+              Record payout &amp; start next cycle
+            </button>
+          </div>
+        </div>
+        <div class="panel-body">
+          ${g.members.length===0 ? `<div class="empty-mini">Add members to start tracking contributions.</div>` : renderContributionsTable(g)}
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h3>Payout history</h3></div>
+        <div class="panel-body">
+          ${renderPayoutHistory(g)}
+        </div>
+      </div>
+    `;
+    tabContent.querySelectorAll('.pay-toggle').forEach(el=>{
+      el.addEventListener('click', async ()=>{
+        await toggleContribution(g, el.dataset.member);
+      });
+    });
+    tabContent.querySelectorAll('.paystack-pay').forEach(el=>{
+      el.addEventListener('click', ()=>{
+        payWithPaystack(g, el.dataset.member);
+      });
+    });
+    const advBtn = document.getElementById('advanceCycleBtn');
+    if(advBtn) advBtn.addEventListener('click', ()=>advanceCycle(g));
+  }
+
+  if(state.activeTab==='members'){
+    tabContent.innerHTML = `
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Members (${g.members.length})</h3>
+          <button class="btn small primary" id="addMemberBtn">+ Add member</button>
+        </div>
+        <div class="panel-body">
+          ${g.members.length===0 ? `<div class="empty-mini">No members yet.</div>` : `
+          <table>
+            <thead><tr><th>Name</th><th>Phone</th><th>Email</th><th>Payout position</th><th></th></tr></thead>
+            <tbody>
+              ${g.order.map((mid, i)=>{
+                const m = memberById(g, mid);
+                if(!m) return '';
+                return `<tr>
+                  <td>${escapeHtml(m.name)}</td>
+                  <td class="num">${escapeHtml(m.phone||'—')}</td>
+                  <td class="num">${escapeHtml(m.email||'—')}</td>
+                  <td class="num">#${i+1} ${i===g.currentCycle%g.order.length? '<span class="pill next">next</span>':''}</td>
+                  <td class="btn-row">
+                    <button class="icon-btn" data-move="up" data-id="${m.id}" ${i===0?'disabled':''}>↑</button>
+                    <button class="icon-btn" data-move="down" data-id="${m.id}" ${i===g.order.length-1?'disabled':''}>↓</button>
+                    <button class="icon-btn" data-remove="${m.id}">Remove</button>
+                  </td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>`}
+        </div>
+      </div>
+    `;
+    document.getElementById('addMemberBtn').addEventListener('click', ()=>openAddMemberModal(g));
+    tabContent.querySelectorAll('[data-move]').forEach(el=>{
+      el.addEventListener('click', ()=>moveMember(g, el.dataset.id, el.dataset.move));
+    });
+    tabContent.querySelectorAll('[data-remove]').forEach(el=>{
+      el.addEventListener('click', ()=>removeMember(g, el.dataset.remove));
+    });
+  }
+
+  if(state.activeTab==='rotation'){
+    tabContent.innerHTML = `
+      <div class="panel">
+        <div class="panel-head"><h3>Rotation order</h3></div>
+        <div class="panel-body">
+          ${g.order.length===0 ? `<div class="empty-mini">Add members to build the rotation.</div>` : `
+          <table>
+            <thead><tr><th>Cycle</th><th>Recipient</th><th>Status</th></tr></thead>
+            <tbody>
+              ${g.order.map((mid,i)=>{
+                const m = memberById(g, mid);
+                if(!m) return '';
+                const status = i < g.currentCycle ? 'paid' : (i === g.currentCycle ? 'next' : 'pending');
+                const label = status==='paid' ? 'Paid out' : (status==='next' ? 'Next in line' : 'Upcoming');
+                return `<tr>
+                  <td class="num">${i+1}</td>
+                  <td>${escapeHtml(m.name)}</td>
+                  <td><span class="pill ${status==='paid'?'paid':(status==='next'?'next':'pending')}">${label}</span></td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>`}
+        </div>
+      </div>
+    `;
+  }
+
+  if(state.activeTab==='reminders'){
+    const defaultersList = defaulters;
+    tabContent.innerHTML = `
+      <div class="panel">
+        <div class="panel-head"><h3>Contribution reminders</h3></div>
+        <div class="panel-body">
+          ${defaultersList.length===0 ? `<div class="empty-mini">Everyone is paid up for this cycle.</div>` : `
+          <p style="color:var(--ink-soft); font-size:13px; margin-bottom:8px;">${defaultersList.length} member(s) still owe for cycle ${cycleLabel}. Copy a message to send by SMS or WhatsApp.</p>
+          <table>
+            <thead><tr><th>Name</th><th>Phone</th><th></th></tr></thead>
+            <tbody>
+              ${defaultersList.map(m=>`
+                <tr>
+                  <td>${escapeHtml(m.name)}</td>
+                  <td class="num">${escapeHtml(m.phone||'—')}</td>
+                  <td><button class="btn small" data-remind="${m.id}">Draft message</button></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          <div id="reminderOutput"></div>
+          <p style="color:var(--ink-soft); font-size:11.5px; margin-top:10px;">Prototype note: this drafts the message text. Wiring this to an SMS/WhatsApp API is a fast follow — see roadmap.</p>
+          `}
+        </div>
+      </div>
+    `;
+    tabContent.querySelectorAll('[data-remind]').forEach(el=>{
+      el.addEventListener('click', ()=>{
+        const m = memberById(g, el.dataset.remind);
+        const msg = `Hi ${m.name}, this is a reminder that your ${fmtMoney(g.amount,g.currency)} contribution for ${g.name} (cycle ${cycleLabel}) is still outstanding. Please pay to keep the rotation on schedule. Thank you!`;
+        document.getElementById('reminderOutput').innerHTML = `<div class="reminder-box">${escapeHtml(msg)}</div>`;
+      });
+    });
+  }
+}
+
+function allPaidThisCycle(g){
+  if(g.members.length===0) return false;
+  return g.members.every(m => isPaid(g, g.currentCycle, m.id));
+}
+
+function renderContributionsTable(g){
+  const canPaystack = !!(g.paystackKey && window.PaystackPop);
+  const rows = g.members.map(m=>{
+    const rec = cycleContribs(g, g.currentCycle)[m.id];
+    const paid = isPaid(g, g.currentCycle, m.id);
+    const showPay = canPaystack && !paid && m.email;
+    const statusLabel = paid ? (rec && rec.verified ? 'Paid (verified)' : 'Paid') : 'Pending';
+    return `<tr>
+      <td>${escapeHtml(m.name)}</td>
+      <td class="num">${fmtMoney(g.amount, g.currency)}</td>
+      <td><span class="pill ${paid?'paid':'pending'}">${statusLabel}</span></td>
+      <td class="btn-row">
+        <button class="btn small pay-toggle" data-member="${m.id}">${paid?'Mark unpaid':'Mark paid manually'}</button>
+        ${showPay ? `<button class="btn small gold paystack-pay" data-member="${m.id}">Pay with Paystack</button>` : ''}
+      </td>
+    </tr>`;
+  }).join('');
+  const hint = g.paystackKey
+    ? (g.members.some(m=>!m.email) ? `<p style="color:var(--ink-soft); font-size:11.5px; margin-top:8px;">Add an email address to a member to enable their "Pay with Paystack" button.</p>` : '')
+    : `<p style="color:var(--ink-soft); font-size:11.5px; margin-top:8px;">Add a Paystack public key in "Edit group" to let members pay their contribution online.</p>`;
+  return `<table>
+    <thead><tr><th>Member</th><th>Amount due</th><th>Status</th><th></th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>${hint}`;
+}
+
+function renderPayoutHistory(g){
+  const entries = Object.entries(g.payouts||{}).sort((a,b)=>Number(a[0])-Number(b[0]));
+  if(entries.length===0) return `<div class="empty-mini">No payouts recorded yet.</div>`;
+  return `<table>
+    <thead><tr><th>Cycle</th><th>Recipient</th><th>Amount</th><th>Date</th></tr></thead>
+    <tbody>
+      ${entries.map(([cycle, p])=>{
+        const m = memberById(g, p.memberId);
+        return `<tr>
+          <td class="num">${Number(cycle)+1}</td>
+          <td>${m?escapeHtml(m.name):'—'}</td>
+          <td class="num">${fmtMoney(poolForCycleAt(g, Number(cycle)), g.currency)}</td>
+          <td class="num">${p.date}</td>
+        </tr>`;
+      }).join('')}
+    </tbody>
+  </table>`;
+}
+function poolForCycleAt(g, cycle){ return g.amount * g.members.length; }
+
+/* ---------------- payments ---------------- */
+function payWithPaystack(g, memberId){
+  const m = memberById(g, memberId);
+  if(!m || !m.email){ showToast('Add an email for this member first.'); return; }
+  if(!window.PaystackPop){ showToast('Paystack could not load. Check your internet connection.'); return; }
+  const handler = window.PaystackPop.setup({
+    key: g.paystackKey,
+    email: m.email,
+    amount: Math.round(g.amount * 100), // kobo
+    currency: 'NGN',
+    ref: `ajopay_${g.id}_${g.currentCycle}_${m.id}_${Date.now()}`,
+    metadata: { group: g.name, member: m.name, cycle: g.currentCycle + 1 },
+    callback: function(response){
+      // Server-side verification — see netlify/functions/verify-payment.js.
+      // We do NOT trust this callback alone; the reference is checked against
+      // Paystack's own records before the contribution is marked paid.
+      verifyAndMarkPaid(g, m, response.reference);
+    },
+    onClose: function(){
+      showToast('Payment window closed.');
+    }
+  });
+  handler.openIframe();
+}
+
+async function toggleContributionPaid(g, memberId, paidState){
+  g.contributions = g.contributions || {};
+  g.contributions[g.currentCycle] = g.contributions[g.currentCycle] || {};
+  g.contributions[g.currentCycle][memberId] = {
+    paid: paidState,
+    date: new Date().toISOString().slice(0,10)
+  };
+  await saveGroup(g);
+  await renderAll();
+}
+
+async function verifyAndMarkPaid(g, m, reference){
+  showToast('Verifying payment…');
+  try{
+    const res = await fetch(`/.netlify/functions/verify-payment?reference=${encodeURIComponent(reference)}`);
+    if(!res.ok){
+      showToast('Could not verify payment. Please contact support with your reference: ' + reference);
+      return;
+    }
+    const data = await res.json();
+    const expectedKobo = Math.round(g.amount * 100);
+    const amountMatches = data.amount === expectedKobo;
+    if(data.verified && amountMatches){
+      g.contributions = g.contributions || {};
+      g.contributions[g.currentCycle] = g.contributions[g.currentCycle] || {};
+      g.contributions[g.currentCycle][m.id] = {
+        paid: true,
+        date: new Date().toISOString().slice(0,10),
+        reference: data.reference,
+        verified: true
+      };
+      await saveGroup(g);
+      showToast(`Payment verified for ${m.name}.`);
+      await renderAll();
+    } else if(data.verified && !amountMatches){
+      showToast(`Payment verified but amount didn't match what's owed. Reference: ${reference}`);
+    } else {
+      showToast('Payment could not be verified. It has not been marked as paid.');
+    }
+  }catch(e){
+    showToast('Verification request failed. Check your connection and try again, or mark manually once confirmed.');
+  }
+}
+
+/* ---------------- actions ---------------- */
+async function toggleContribution(g, memberId){
+  g.contributions = g.contributions || {};
+  g.contributions[g.currentCycle] = g.contributions[g.currentCycle] || {};
+  const cur = g.contributions[g.currentCycle][memberId];
+  g.contributions[g.currentCycle][memberId] = {
+    paid: !(cur && cur.paid),
+    date: new Date().toISOString().slice(0,10)
+  };
+  await saveGroup(g);
+  await renderAll();
+}
+
+async function advanceCycle(g){
+  if(g.members.length===0) return;
+  const recipient = nextRecipient(g);
+  g.payouts = g.payouts || {};
+  g.payouts[g.currentCycle] = { memberId: recipient.id, date: new Date().toISOString().slice(0,10) };
+  g.currentCycle += 1;
+  await saveGroup(g);
+  showToast(`Payout recorded for ${recipient.name}. Cycle ${g.currentCycle+1} started.`);
+  await renderAll();
+}
+
+async function moveMember(g, memberId, dir){
+  const idx = g.order.indexOf(memberId);
+  const swapWith = dir==='up' ? idx-1 : idx+1;
+  if(swapWith<0 || swapWith>=g.order.length) return;
+  [g.order[idx], g.order[swapWith]] = [g.order[swapWith], g.order[idx]];
+  await saveGroup(g);
+  await renderAll();
+}
+
+async function removeMember(g, memberId){
+  g.members = g.members.filter(m=>m.id!==memberId);
+  g.order = g.order.filter(id=>id!==memberId);
+  await saveGroup(g);
+  await syncIndexCount(g);
+  await renderAll();
+}
+
+async function syncIndexCount(g){
+  const idxEntry = state.groups.find(x=>x.id===g.id);
+  if(idxEntry){ idxEntry.memberCount = g.members.length; idxEntry.name = g.name; }
+  await saveIndex();
+}
+
+/* ---------------- modals ---------------- */
+function closeModal(){ document.getElementById('modalRoot').innerHTML=''; }
+
+function openNewGroupModal(){
+  const root = document.getElementById('modalRoot');
+  root.innerHTML = `
+    <div class="overlay">
+      <div class="modal">
+        <h3>New savings group</h3>
+        <div class="field">
+          <label>Group name</label>
+          <input id="ngName" type="text" placeholder="e.g. Balogun Market Traders Ajo">
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Contribution amount</label>
+            <input id="ngAmount" type="number" min="0" placeholder="20000">
+          </div>
+          <div class="field">
+            <label>Frequency</label>
+            <select id="ngFreq">
+              <option value="weekly">Weekly</option>
+              <option value="monthly" selected>Monthly</option>
+              <option value="daily">Daily</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label>Currency</label>
+          <select id="ngCurrency">
+            <option value="₦" selected>₦ Naira</option>
+            <option value="$">$ Dollar</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Paystack public key <span style="font-weight:400; color:var(--ink-soft);">(optional — enables digital collection)</span></label>
+          <input id="ngPaystackKey" type="text" placeholder="pk_test_...">
+        </div>
+        <div class="modal-actions">
+          <button class="btn" id="ngCancel">Cancel</button>
+          <button class="btn primary" id="ngSave">Create group</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('ngCancel').addEventListener('click', closeModal);
+  document.getElementById('ngSave').addEventListener('click', async ()=>{
+    const name = document.getElementById('ngName').value.trim();
+    const amount = Number(document.getElementById('ngAmount').value) || 0;
+    const frequency = document.getElementById('ngFreq').value;
+    const currency = document.getElementById('ngCurrency').value;
+    const paystackKey = document.getElementById('ngPaystackKey').value.trim();
+    if(!name){ showToast('Give the group a name.'); return; }
+    const g = {
+      id: uid('grp'), name, amount, frequency, currency, paystackKey,
+      createdAt: new Date().toISOString().slice(0,10),
+      members: [], order: [], currentCycle: 0,
+      contributions: {}, payouts: {}
+    };
+    await saveGroup(g);
+    state.groups.push({id:g.id, name:g.name, memberCount:0});
+    await saveIndex();
+    closeModal();
+    await selectGroup(g.id);
+  });
+}
+
+function openEditGroupModal(g){
+  const root = document.getElementById('modalRoot');
+  root.innerHTML = `
+    <div class="overlay">
+      <div class="modal">
+        <h3>Edit group</h3>
+        <div class="field">
+          <label>Group name</label>
+          <input id="egName" type="text" value="${escapeHtml(g.name)}">
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Contribution amount</label>
+            <input id="egAmount" type="number" min="0" value="${g.amount}">
+          </div>
+          <div class="field">
+            <label>Frequency</label>
+            <select id="egFreq">
+              <option value="weekly" ${g.frequency==='weekly'?'selected':''}>Weekly</option>
+              <option value="monthly" ${g.frequency==='monthly'?'selected':''}>Monthly</option>
+              <option value="daily" ${g.frequency==='daily'?'selected':''}>Daily</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label>Paystack public key <span style="font-weight:400; color:var(--ink-soft);">(optional — enables digital collection)</span></label>
+          <input id="egPaystackKey" type="text" placeholder="pk_test_..." value="${escapeHtml(g.paystackKey||'')}">
+        </div>
+        <div class="modal-actions">
+          <button class="btn" id="egCancel">Cancel</button>
+          <button class="btn primary" id="egSave">Save changes</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('egCancel').addEventListener('click', closeModal);
+  document.getElementById('egSave').addEventListener('click', async ()=>{
+    g.name = document.getElementById('egName').value.trim() || g.name;
+    g.amount = Number(document.getElementById('egAmount').value) || g.amount;
+    g.frequency = document.getElementById('egFreq').value;
+    g.paystackKey = document.getElementById('egPaystackKey').value.trim();
+    await saveGroup(g);
+    await syncIndexCount(g);
+    closeModal();
+    await renderAll();
+  });
+}
+
+function confirmDeleteGroup(g){
+  const root = document.getElementById('modalRoot');
+  root.innerHTML = `
+    <div class="overlay">
+      <div class="modal">
+        <h3>Delete "${escapeHtml(g.name)}"?</h3>
+        <p style="color:var(--ink-soft); font-size:13px;">This removes the group and its contribution history from this device. This can't be undone.</p>
+        <div class="modal-actions">
+          <button class="btn" id="delCancel">Cancel</button>
+          <button class="btn danger" id="delConfirm">Delete group</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('delCancel').addEventListener('click', closeModal);
+  document.getElementById('delConfirm').addEventListener('click', async ()=>{
+    try{ await window.storage.delete(groupKey(g.id)); }catch(e){}
+    state.groups = state.groups.filter(x=>x.id!==g.id);
+    delete state.cache[g.id];
+    await saveIndex();
+    state.activeId = state.groups.length ? state.groups[0].id : null;
+    closeModal();
+    await renderAll();
+  });
+}
+
+function openAddMemberModal(g){
+  const root = document.getElementById('modalRoot');
+  root.innerHTML = `
+    <div class="overlay">
+      <div class="modal">
+        <h3>Add member</h3>
+        <div class="field">
+          <label>Full name</label>
+          <input id="amName" type="text" placeholder="e.g. Chinwe Okafor">
+        </div>
+        <div class="field">
+          <label>Phone number</label>
+          <input id="amPhone" type="text" placeholder="080...">
+        </div>
+        <div class="field">
+          <label>Email <span style="font-weight:400; color:var(--ink-soft);">(needed for Paystack digital payments)</span></label>
+          <input id="amEmail" type="email" placeholder="name@email.com">
+        </div>
+        <div class="modal-actions">
+          <button class="btn" id="amCancel">Cancel</button>
+          <button class="btn primary" id="amSave">Add member</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('amCancel').addEventListener('click', closeModal);
+  document.getElementById('amSave').addEventListener('click', async ()=>{
+    const name = document.getElementById('amName').value.trim();
+    const phone = document.getElementById('amPhone').value.trim();
+    const email = document.getElementById('amEmail').value.trim();
+    if(!name){ showToast('Enter a name.'); return; }
+    const m = {id: uid('mem'), name, phone, email};
+    g.members.push(m);
+    g.order.push(m.id);
+    await saveGroup(g);
+    await syncIndexCount(g);
+    closeModal();
+    await renderAll();
+  });
+}
+
+/* ---------------- init ---------------- */
+document.getElementById('newGroupBtn').addEventListener('click', openNewGroupModal);
+
+async function init(){
+  await loadIndex();
+  if(state.groups.length){
+    state.activeId = state.groups[0].id;
+  }
+  await renderAll();
+}
+init();
+</script>
+</body>
+</html>
