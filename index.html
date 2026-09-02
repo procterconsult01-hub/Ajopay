@@ -361,10 +361,39 @@ function showToast(msg){
   setTimeout(()=>{ root.innerHTML=''; }, 2400);
 }
 
-/* ---------------- storage ---------------- */
+/* ---------------- storage ----------------
+   Uses real browser localStorage — persists across reloads and new tabs
+   on THIS device/browser, but does not sync between devices (a phone and
+   a laptop opening the same URL will each have their own separate data).
+--------------------------------------------------------------------- */
+function lsGet(key){
+  try{
+    const raw = localStorage.getItem(key);
+    return raw === null ? null : { value: raw };
+  }catch(e){
+    return null;
+  }
+}
+function lsSet(key, value){
+  try{
+    localStorage.setItem(key, value);
+    return true;
+  }catch(e){
+    return false;
+  }
+}
+function lsDelete(key){
+  try{
+    localStorage.removeItem(key);
+    return true;
+  }catch(e){
+    return false;
+  }
+}
+
 async function loadIndex(){
   try{
-    const res = await window.storage.get(STORAGE_KEY_INDEX);
+    const res = lsGet(STORAGE_KEY_INDEX);
     state.groups = res ? JSON.parse(res.value) : [];
   }catch(e){
     state.groups = [];
@@ -372,13 +401,13 @@ async function loadIndex(){
 }
 async function saveIndex(){
   try{
-    await window.storage.set(STORAGE_KEY_INDEX, JSON.stringify(state.groups));
+    lsSet(STORAGE_KEY_INDEX, JSON.stringify(state.groups));
   }catch(e){ console.error('index save failed', e); }
 }
 async function loadGroup(id){
   if(state.cache[id]) return state.cache[id];
   try{
-    const res = await window.storage.get(groupKey(id));
+    const res = lsGet(groupKey(id));
     const g = res ? JSON.parse(res.value) : null;
     state.cache[id] = g;
     return g;
@@ -389,7 +418,7 @@ async function loadGroup(id){
 async function saveGroup(g){
   state.cache[g.id] = g;
   try{
-    await window.storage.set(groupKey(g.id), JSON.stringify(g));
+    lsSet(groupKey(g.id), JSON.stringify(g));
   }catch(e){ console.error('group save failed', e); }
 }
 
@@ -961,7 +990,7 @@ function confirmDeleteGroup(g){
   `;
   document.getElementById('delCancel').addEventListener('click', closeModal);
   document.getElementById('delConfirm').addEventListener('click', async ()=>{
-    try{ await window.storage.delete(groupKey(g.id)); }catch(e){}
+    try{ lsDelete(groupKey(g.id)); }catch(e){}
     state.groups = state.groups.filter(x=>x.id!==g.id);
     delete state.cache[g.id];
     await saveIndex();
